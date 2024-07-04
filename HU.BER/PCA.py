@@ -50,7 +50,6 @@ def station_traffic(X: pd.DataFrame, cluster, output_path: str = ".") -> typing.
             prev_station_id = station_id
         lines_stations[line_id] = stations_traffic
 
-    # TAKE 2
     for line_id, station_traffic in lines_stations.items():
         filtered_stations_traffic = {str(k): v for k, v in station_traffic.items() if v > 0}
 
@@ -65,24 +64,61 @@ def station_traffic(X: pd.DataFrame, cluster, output_path: str = ".") -> typing.
             plt.savefig(f"{output_path}/traffic_{line_id}.png")  # Save the plot to a file
 
 
+# Function to determine rush hour period
+def identify_rush_hour(X):
+    # Define rush hour criteria (adjust as needed)
+    rush_hours = {}
+    for hour in range(24):
+        max_passengers = 0
+        X_hour = X[X['travel_hour'] == hour]
+        for row in X_hour:
+            if max_passengers == 0 or row['passengers_continue'] > max_passengers:
+                max_passengers = row['passengers_continue']
+        if max_passengers > 20:
+            rush_hours[hour] = max_passengers
+    return rush_hours.keys()
+
+
+def is_rush_hour(hour, rush_hours):
+    return hour in rush_hours
+
+
+def rush_hour(X: pd.DataFrame, cluster, output_path: str = ".") -> typing.NoReturn:
+    # Convert 'arrival_time' to datetime format
+    X['arrival_time'] = pd.to_datetime(X['arrival_time'])
+
+    # Extract hour from 'arrival_time'
+    X['travel_hour'] = X['arrival_time'].dt.hour
+
+    rush_hours = identify_rush_hour(X)
+
+    # Apply rush hour determination and group by cluster
+    X['is_rush_hour'] = X['travel_hour'].apply(is_rush_hour)
+    print(X)
+
+
+
 if __name__ == "__main__":
     df = pd.read_csv("train_bus_schedule.csv", encoding="ISO-8859-8")
 
     df.dropna()
 
     # X, y = df.drop('passengers_up', axis=1), df.passengers_up
-    X = df[['passengers_continue_menupach', 'mekadem_nipuach_luz', 'passengers_continue', 'longitude', 'latitude',
-    'station_id', 'station_index', 'direction', 'line_id']]
-    y = df.passengers_up
-    # random_seed = np.random(0)
+    # X = df[['passengers_continue_menupach', 'mekadem_nipuach_luz', 'passengers_continue', 'longitude', 'latitude',
+    # 'station_id', 'station_index', 'direction', 'line_id']]
+    # y = df.passengers_up
+    # # random_seed = np.random(0)
+    #
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+    # feature_evaluation(X_train, y_train)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
-    feature_evaluation(X_train, y_train)
 
-
-    # df = pd.read_csv("train_bus_schedule.csv", encoding="ISO-8859-8")
-    # df.dropna()
-    # df = df[df['trip_id_unique'] == '212084b']
+    df = pd.read_csv("train_bus_schedule.csv", encoding="ISO-8859-8")
+    df.dropna()
+    df.drop('station_name', axis=1)
+    df = df[df['cluster'] == 'A']
+    rush_hour(df, 'A')
     # df = df[['trip_id_unique', 'passengers_up', 'passengers_continue', 'cluster', 'station_id']]
     #
-    # station_traffic(df, 'A')
+    # station_traffic(df, 'A')\
+
