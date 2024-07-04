@@ -67,39 +67,89 @@ def station_traffic(X: pd.DataFrame, cluster, output_path: str = ".") -> typing.
 # Function to determine rush hour period
 def identify_rush_hour(X):
     # Define rush hour criteria (adjust as needed)
-    rush_hours = {}
+    rush_hours_list = []
+    rush_hours_dict = {}
     for hour in range(24):
         max_passengers = 0
         X_hour = X[X['travel_hour'] == hour]
-        for row in X_hour:
-            if max_passengers == 0 or row['passengers_continue'] > max_passengers:
-                max_passengers = row['passengers_continue']
-        if max_passengers > 20:
-            rush_hours[hour] = max_passengers
-    return rush_hours.keys()
+        for row in X_hour.iterrows():
+            if max_passengers == 0 or row[1]['passengers_continue'] > max_passengers:
+                max_passengers = row[1]['passengers_continue']
+        rush_hours_list.append(max_passengers)
+        if max_passengers > 60:
+            rush_hours_dict[hour] = max_passengers
+    return rush_hours_list, list(rush_hours_dict.keys())
 
 
-def is_rush_hour(hour, rush_hours):
-    return hour in rush_hours
-
-
-def rush_hour(X: pd.DataFrame, cluster, output_path: str = ".") -> typing.NoReturn:
-    # Convert 'arrival_time' to datetime format
+def is_line_in_rush_hour(X):
+    rush_hours_per_cluster = {}
     X['arrival_time'] = pd.to_datetime(X['arrival_time'])
 
     # Extract hour from 'arrival_time'
     X['travel_hour'] = X['arrival_time'].dt.hour
 
-    rush_hours = identify_rush_hour(X)
+    clusters = X['cluster'].drop_duplicates().values.tolist()
+    for cluster in clusters:
+        rush_hours_per_cluster[cluster] = identify_rush_hour(X[X['cluster'] == cluster])[1]
 
-    # Apply rush hour determination and group by cluster
-    X['is_rush_hour'] = X['travel_hour'].apply(is_rush_hour)
-    print(X)
+    rush_lines_per_cluster = {}
+    for cluster in rush_hours_per_cluster.keys():
+        filtered_lines = []
+        hour_ranges = rush_hours_per_cluster[cluster]
+        for start_hour in hour_ranges:
+            filtered = X[(X['cluster'] == cluster) & (X['travel_hour'].between(start_hour, (start_hour + 1) % 24))]['line_id'].unique()
+            filtered_lines.extend(filtered)
+        print(filtered)
 
+
+        rush_lines_per_cluster[cluster] = list(set(filtered_lines))
+        # print(rush_lines_per_cluster[cluster])
+
+
+        # rush_lines_per_cluster[cluster] = []
+        # hour_range = rush_hours_per_cluster[cluster]
+        # print(cluster, " ", X[X['cluster'] == cluster]['line_id'].unique())
+        # filtered_lines = X[(X['cluster'] == cluster) & (X['travel_hour'].between(hour_range))]['line_id'].unique()
+        # rush_hours_per_cluster[cluster] = list(filtered_lines)
+    # print(rush_hours_per_cluster)
+
+def rush_hour_graph(X: pd.DataFrame, output_path: str = ".") -> typing.NoReturn:
+    # Convert 'arrival_time' to datetime format
+    rush_hours_per_cluster = {'Hour': list((range(24)))}
+    X['arrival_time'] = pd.to_datetime(X['arrival_time'])
+
+    # Extract hour from 'arrival_time'
+    X['travel_hour'] = X['arrival_time'].dt.hour
+
+    clusters = X['cluster'].drop_duplicates().values.tolist()
+    for cluster in clusters:
+        rush_hours_per_cluster[cluster] = identify_rush_hour(X[X['cluster'] == cluster])[0]
+    sns.set_style('ticks')
+    plt.rcParams.update({'font.size': 8})
+    converted_dict = pd.DataFrame(rush_hours_per_cluster)
+    rush_hours_per_cluster.pop('Hour')
+    palette = sns.color_palette("deep", n_colors=11)
+    color_ind = 0
+
+    plt.figure(figsize=(20, 12))
+    for cluster in rush_hours_per_cluster.keys():
+        if not cluster == 'Hour':
+            sns.lineplot(x='Hour', y=cluster, data=converted_dict, marker='o', color=palette[color_ind], label=cluster)
+            color_ind += 1
+    plt.xticks(ticks=converted_dict['Hour'], labels=converted_dict['Hour'], fontsize=17)
+    plt.yticks(fontsize=17)
+
+    plt.title(f'Rush Hours pair Clusters', fontsize=28)
+    plt.xlabel('Hour', fontsize=17)
+    plt.ylabel('People On The Bus', fontsize=17)
+    plt.legend(loc="upper left", fontsize=17)
+    plt.grid(True)
+    sns.despine()
+    plt.savefig(f"{output_path}rush_hour.png")
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("train_bus_schedule.csv", encoding="ISO-8859-8")
+    df = pd.read_csv("train_bus_schedule_filtered.csv")
 
     df.dropna()
 
@@ -112,12 +162,9 @@ if __name__ == "__main__":
     # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
     # feature_evaluation(X_train, y_train)
 
+    # rush_hour_graph(df)
+    is_line_in_rush_hour(df)
 
-    df = pd.read_csv("train_bus_schedule.csv", encoding="ISO-8859-8")
-    df.dropna()
-    df.drop('station_name', axis=1)
-    df = df[df['cluster'] == 'A']
-    rush_hour(df, 'A')
     # df = df[['trip_id_unique', 'passengers_up', 'passengers_continue', 'cluster', 'station_id']]
     #
     # station_traffic(df, 'A')\
