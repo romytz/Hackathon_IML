@@ -102,21 +102,19 @@ def is_line_in_rush_hour(X):
                 filtered_lines.add(row[1]['line_id'])
         rush_lines_per_cluster[cluster] = filtered_lines
 
-    # heatmap_data = pd.DataFrame(columns=range(24), index=list(rush_lines_per_cluster.keys()))
-    # for cluster, lines in rush_lines_per_cluster.items():
-    #     for hour in range(24):
-    #         if any(row['travel_hour'] == hour for row in X[X['line_id'].isin(lines)].itertuples()):
-    #             heatmap_data.loc[cluster, hour] = 1
-    #         else:
-    #             heatmap_data.loc[cluster, hour] = 0
-    #
-    # # Plotting
-    # plt.figure(figsize=(12, 8))
-    # sns.heatmap(heatmap_data, cmap='Blues', annot=True, fmt='.0f', cbar=True)
-    # plt.xlabel('Hour of Day')
-    # plt.ylabel('Cluster')
-    # plt.title('Presence of Rush Lines by Hour and Cluster')
-    # plt.show()
+# FIRST TAKE
+    clusters = sorted(rush_lines_per_cluster.keys())
+    rush_counts = [len(rush_lines_per_cluster[cluster]) for cluster in clusters]
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    plt.bar(clusters, rush_counts, color='skyblue')
+    plt.xlabel('Cluster')
+    plt.ylabel('Number of Rush Hour Lines')
+    plt.title('Number of Rush Hour Lines per Cluster')
+    plt.xticks(rotation=55)
+    plt.tight_layout()
+    plt.savefig("Rush_Hours_per_Cluster.png")
 
 def rush_hour_graph(X: pd.DataFrame, output_path: str = ".") -> typing.NoReturn:
     # Convert 'arrival_time' to datetime format
@@ -168,9 +166,6 @@ if __name__ == "__main__":
     # feature_evaluation(X_train, y_train)
 
     # rush_hour_graph(df)
-    is_line_in_rush_hour(df)
+    # is_line_in_rush_hour(df)
 
-    # df = df[['trip_id_unique', 'passengers_up', 'passengers_continue', 'cluster', 'station_id']]
-    #
-    # station_traffic(df, 'A')\
-
+    station_traffic(df, 'Mizrahi-Ramat gan')
