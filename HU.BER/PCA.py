@@ -94,24 +94,29 @@ def is_line_in_rush_hour(X):
 
     rush_lines_per_cluster = {}
     for cluster in rush_hours_per_cluster.keys():
-        filtered_lines = []
+        filtered_lines = set()
         hour_ranges = rush_hours_per_cluster[cluster]
-        for start_hour in hour_ranges:
-            filtered = X[(X['cluster'] == cluster) & (X['travel_hour'].between(start_hour, (start_hour + 1) % 24))]['line_id'].unique()
-            filtered_lines.extend(filtered)
-        print(filtered)
+        filtered = X[(X['cluster'] == cluster)]
+        for row in filtered.iterrows():
+            if row[1]['travel_hour'] in hour_ranges:
+                filtered_lines.add(row[1]['line_id'])
+        rush_lines_per_cluster[cluster] = filtered_lines
 
-
-        rush_lines_per_cluster[cluster] = list(set(filtered_lines))
-        # print(rush_lines_per_cluster[cluster])
-
-
-        # rush_lines_per_cluster[cluster] = []
-        # hour_range = rush_hours_per_cluster[cluster]
-        # print(cluster, " ", X[X['cluster'] == cluster]['line_id'].unique())
-        # filtered_lines = X[(X['cluster'] == cluster) & (X['travel_hour'].between(hour_range))]['line_id'].unique()
-        # rush_hours_per_cluster[cluster] = list(filtered_lines)
-    # print(rush_hours_per_cluster)
+    # heatmap_data = pd.DataFrame(columns=range(24), index=list(rush_lines_per_cluster.keys()))
+    # for cluster, lines in rush_lines_per_cluster.items():
+    #     for hour in range(24):
+    #         if any(row['travel_hour'] == hour for row in X[X['line_id'].isin(lines)].itertuples()):
+    #             heatmap_data.loc[cluster, hour] = 1
+    #         else:
+    #             heatmap_data.loc[cluster, hour] = 0
+    #
+    # # Plotting
+    # plt.figure(figsize=(12, 8))
+    # sns.heatmap(heatmap_data, cmap='Blues', annot=True, fmt='.0f', cbar=True)
+    # plt.xlabel('Hour of Day')
+    # plt.ylabel('Cluster')
+    # plt.title('Presence of Rush Lines by Hour and Cluster')
+    # plt.show()
 
 def rush_hour_graph(X: pd.DataFrame, output_path: str = ".") -> typing.NoReturn:
     # Convert 'arrival_time' to datetime format
