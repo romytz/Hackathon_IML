@@ -66,6 +66,8 @@ def preprocess_data(df):
         df.iloc[index, df.columns.get_loc('time_in_station (sec)')] = time_difference(row["arrival_time"],
                                                                                       row["door_closing_time"])
 
+        return df
+
 def get_df_for_test(df):
     df['time_in_station (sec)'] = 0
 
@@ -101,6 +103,7 @@ for example:
 
 
 if __name__ == '__main__':
+    print('Running')
     parser = ArgumentParser()
     parser.add_argument('--training_set', type=str, required=True,
                         help="path to the training set")
@@ -122,10 +125,10 @@ if __name__ == '__main__':
     # this model was trained in the same wat+y, but without splitting into stations (less expressive)
     baseline_model = load('linear_regression_model.joblib')
 
-    X = df[['time_in_station (sec)', 'passengers_continue', 'trip_id_unique_station', "station_id"]]
-    y = df[['passengers_up']]
+    X_train = df[['time_in_station (sec)', 'passengers_continue', 'trip_id_unique_station', "station_id"]]
+    y_train = df[['passengers_up']]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.0, random_state=42)
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.0, random_state=42)
 
     X_train['passengers_up'] = y_train["passengers_up"]
     X_y_train_sorted = X_train.sort_values(by='station_id')
