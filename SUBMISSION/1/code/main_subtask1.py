@@ -193,7 +193,6 @@ if __name__ == '__main__':
         # Concatenate the predictions with the main DataFrame
         df_predictions = pd.concat([df_predictions, predictions_df], ignore_index=True)
 
-
     # 7. save the predictions to args.out
     logging.info("predictions saved to {}".format(args.out))
     df_predictions.to_csv(args.out, index=False)
