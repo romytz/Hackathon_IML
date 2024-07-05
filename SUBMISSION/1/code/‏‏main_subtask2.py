@@ -17,47 +17,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from argparse import ArgumentParser
 
-def get_baseline_model (df):
-    df['time_in_station (sec)'] = 0
-
-    for index, row in tqdm(df.iterrows(), total=df.shape[0]):
-
-        if pd.isna(row["door_closing_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")] = row["arrival_time"]
-            row["door_closing_time"] = row["arrival_time"]
-
-
-        # close_after_arr
-        if not is_time_after(row["door_closing_time"], row["arrival_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")], df.iloc[index, df.columns.get_loc("arrival_time")] = row["arrival_time"], row[
-                "door_closing_time"]
-
-        # passenger_cont_is_int_pos
-        if row["passengers_continue"] <= 0:
-            df.iloc[index, df.columns.get_loc("passengers_continue")] = 0
-
-        df.iloc[index, df.columns.get_loc('time_in_station (sec)')] = time_difference(row["arrival_time"], row["door_closing_time"])
-        #
-        # if index == 100:
-        #     break
-
-
-    # Define the features (independent variables) and target (dependent variable)
-    # first_50_rows = df.head(50)
-
-    X = df[['time_in_station (sec)', 'passengers_continue', 'trip_id_unique_station']]
-    y = df[['passengers_up']]
-
-    # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-    X_train_model = X_train[['time_in_station (sec)', 'passengers_continue']]
-    X_test_model = X_test[['time_in_station (sec)', 'passengers_continue']]
-
-    # Create and fit the model
-    model = LinearRegression()
-    model.fit(X_train_model, y_train)
-    return model
-
 def is_time_after(time1, time2, time_format='%H:%M:%S'):
     try:
         t1 = datetime.strptime(time1, time_format)
@@ -164,8 +123,8 @@ if __name__ == '__main__':
     # 3. train a model
     logging.info("training...")
     # this model was trained in the same wat+y, but without splitting into stations (less expressive)
-    # baseline_model = load('linear_regression_model.joblib')
-    baseline_model = get_baseline_model(df)
+    baseline_model = load('linear_regression_model.joblib')
+
     X_train = df[['time_in_station (sec)', 'passengers_continue', 'trip_id_unique_station', "station_id"]]
     y_train = df[['passengers_up']]
 
