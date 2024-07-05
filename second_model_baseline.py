@@ -3,7 +3,7 @@ import math
 import  first_baseline
 from joblib import load
 import matplotlib.pyplot as plt
-
+from sklearn.preprocessing import StandardScaler
 import numpy as np
 from tqdm import tqdm
 import preprocessing
@@ -74,22 +74,25 @@ pd.options.mode.copy_on_write = True
 #
 # with open('df_of_question_2_fitered.pkl', 'wb') as file:
 #     pickle.dump(df, file)
-with open('df_of_question_2_fitered.pkl', 'rb') as file:
+with open('df_of_question_2.pkl', 'rb') as file:
     df = pickle.load(file)
+
+scaler = StandardScaler()
+df['duration_between_stations'] = scaler.fit_transform(df[['duration_between_stations']])
 
 # df_sorted = df.sort_values(by='duration_between_stations')
 
 
 X = df[['distance_between_stations', 'passengers_up', 'trip_id_unique']]
 y = df[['duration_between_stations']]
-plot_hist(df[['duration_between_stations']])
+# plot_hist(df[['duration_between_stations_standardized']])
 # Split data into training and testing sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
 X_train_model = X_train[['distance_between_stations', 'passengers_up']]
 X_test_model = X_test[['distance_between_stations', 'passengers_up']]
 
 # Create and fit the model
-model = Lasso(alpha=1.0)
+model = LinearRegression()
 model.fit(X_train_model, y_train)
 
 # Make predictions
@@ -108,10 +111,7 @@ df_gold_standard = pd.DataFrame({
 # Evaluate the model
 mse = mean_squared_error(y_test, y_pred)
 mse_boarding = eval_duration(df_predictions, df_gold_standard)
-print(f"MSE for boardings: {mse_boarding}")
+print(f"MSE for duration: {mse_boarding}")
 
-print(f"Mean Squared Error: {mse}")
-
-print("that mean error of ", math.sqrt(mse_boarding), " seconds")
 
 

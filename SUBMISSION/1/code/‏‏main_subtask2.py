@@ -1,22 +1,26 @@
+
+from argparse import ArgumentParser
 import logging
-from joblib import load
 import csv
 import math
 import  first_baseline
 from joblib import load
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 import numpy as np
 from tqdm import tqdm
 import preprocessing
 import pandas as pd
 from datetime import datetime
-pd.options.mode.copy_on_write = True
 from joblib import dump
+from geopy.distance import geodesic
+from sklearn.linear_model import Ridge, Lasso
+
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-from argparse import ArgumentParser
-
+import pickle
 def is_time_after(time1, time2, time_format='%H:%M:%S'):
     try:
         t1 = datetime.strptime(time1, time_format)
@@ -32,62 +36,61 @@ def time_difference(time1, time2, time_format='%H:%M:%S'):
     return int(delta.total_seconds())
 
 def preprocess_data(df):
-    df = df.drop("station_name", axis=1)
-    df['time_in_station (sec)'] = 0
 
-    for index, row in tqdm(df.iterrows(), total=df.shape[0]):
+    df['distance_between_stations'] = 0
+    df['duration_between_stations'] = 0
+    df = df.loc[df['arrival_is_estimated'] == False]
 
-        # df.iloc[index, df.columns.get_loc("part")] = part_dict[row["part"]]
-        # df.iloc[index, df.columns.get_loc("cluster")] = cluster_dict[row["cluster"]]
+    for i in tqdm(range(len(df) - 1), total=len(df) - 1):
+        row1 = df.iloc[i]
+        row2 = df.iloc[i + 1]
 
-        if pd.isna(row["door_closing_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")] = row["arrival_time"]
-            row["door_closing_time"] = row["arrival_time"]
-
-        if not is_time_after(row["door_closing_time"], row["arrival_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")], df.iloc[
-                index, df.columns.get_loc("arrival_time")] = row["arrival_time"], row[
-                "door_closing_time"]
-
-        if pd.isna(row["door_closing_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")] = row["arrival_time"]
-            row["door_closing_time"] = row["arrival_time"]
-
-        # close_after_arr
-        if not is_time_after(row["door_closing_time"], row["arrival_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")], df.iloc[
-                index, df.columns.get_loc("arrival_time")] = row["arrival_time"], row[
-                "door_closing_time"]
+        if row2["station_index"] == 1:
+            continue
 
         # passenger_cont_is_int_pos
-        if row["passengers_continue"] <= 0:
-            df.iloc[index, df.columns.get_loc("passengers_continue")] = 0
+        if row2["passengers_continue"] <= 0:
+            df.iloc[i + 1, df.columns.get_loc("passengers_continue")] = 0
 
-        df.iloc[index, df.columns.get_loc('time_in_station (sec)')] = time_difference(row["arrival_time"],
-                                                                                      row["door_closing_time"])
+        df.iloc[i + 1, df.columns.get_loc('duration_between_stations')] = preprocessing.time_difference(row1["arrival_time"],
+                                                                                      row2["arrival_time"])
 
+        # Example usage
+        coord1 = (row1["latitude"], row1["longitude"])  # Warsaw, Poland
+        coord2 = (row2["latitude"], row2["longitude"])
+
+        df.iloc[i + 1, df.columns.get_loc('distance_between_stations')] = geodesic(coord1, coord2).meters
+        scaler = StandardScaler()
+        df['duration_between_stations'] = scaler.fit_transform(df[['duration_between_stations']])
         return df
 
 def get_df_for_test(df):
-    df['time_in_station (sec)'] = 0
+    df['distance_between_stations'] = 0
+    # df['duration_between_stations'] = 0
+    df = df.loc[df['arrival_is_estimated'] == False]
 
-    for index, row in tqdm(df.iterrows(), total=df.shape[0]):
+    for i in tqdm(range(len(df) - 1), total=len(df) - 1):
+        row1 = df.iloc[i]
+        row2 = df.iloc[i + 1]
 
-        if pd.isna(row["door_closing_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")] = row["arrival_time"]
-            row["door_closing_time"] = row["arrival_time"]
-
-        if not preprocessing.is_time_after(row["door_closing_time"], row["arrival_time"]):
-            df.iloc[index, df.columns.get_loc("door_closing_time")], df.iloc[index, df.columns.get_loc("arrival_time")] = row["arrival_time"], row[
-                "door_closing_time"]
+        if row2["station_index"] == 1:
+            continue
 
         # passenger_cont_is_int_pos
-        if row["passengers_continue"] <= 0:
-            df.iloc[index, df.columns.get_loc("passengers_continue")] = 0
+        if row2["passengers_continue"] <= 0:
+            df.iloc[i + 1, df.columns.get_loc("passengers_continue")] = 0
 
-        df.iloc[index, df.columns.get_loc('time_in_station (sec)')] = preprocessing.time_difference(row["arrival_time"], row["door_closing_time"])
+        # df.iloc[i + 1, df.columns.get_loc('duration_between_stations')] = preprocessing.time_difference(row1["arrival_time"],
+        #                                                                               row2["arrival_time"])
 
-        return df[['time_in_station (sec)', "passengers_continue", "door_closing_time", 'trip_id_unique_station', "station_id"]]
+        # Example usage
+        coord1 = (row1["latitude"], row1["longitude"])  # Warsaw, Poland
+        coord2 = (row2["latitude"], row2["longitude"])
+
+        df.iloc[i + 1, df.columns.get_loc('distance_between_stations')] = geodesic(coord1, coord2).meters
+        # scaler = StandardScaler()
+        # df['duration_between_stations'] = scaler.fit_transform(df[['duration_between_stations']])
+        return df[['distance_between_stations', "passengers_up", 'trip_id_unique', "station_index"]]
 
 
 """
@@ -122,29 +125,21 @@ if __name__ == '__main__':
 
     # 3. train a model
     logging.info("training...")
-    # this model was trained in the same wat+y, but without splitting into stations (less expressive)
-    baseline_model = load('linear_regression_model.joblib')
+    X = df[['distance_between_stations', 'passengers_up', 'trip_id_unique']]
+    y = df[['duration_between_stations']]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
 
-    X_train = df[['time_in_station (sec)', 'passengers_continue', 'trip_id_unique_station', "station_id"]]
-    y_train = df[['passengers_up']]
+    X_train_model = X_train[['distance_between_stations', 'passengers_up']]
+    X_test_model = X_test[['distance_between_stations', 'passengers_up']]
 
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.0, random_state=42)
+    # Create and fit the model
+    model = LinearRegression()
+    model.fit(X_train_model, y_train)
 
-    X_train['passengers_up'] = y_train["passengers_up"]
-    X_y_train_sorted = X_train.sort_values(by='station_id')
+    # X_train['passengers_up'] = y_train["passengers_up"]
+    # X_y_train_sorted = X_train.sort_values(by='station_id')
 
-    X_y_train_grouped = X_y_train_sorted.groupby('station_id')
-    model_per_stations_dict = {}
-
-    # Wrap the list with tqdm for a progress bar
-    for key, group in tqdm(X_y_train_grouped):
-        X_train_model = group[['time_in_station (sec)', 'passengers_continue']]
-        y_train_model = group['passengers_up']
-
-        # Create and fit the model
-        model = LinearRegression()
-        model.fit(X_train_model, y_train_model)
-        model_per_stations_dict[key] = model
+    # X_y_train_grouped = X_train.groupby('trip_id_unique')
 
 
     # 4. load the test set (args.test_set)
@@ -154,12 +149,12 @@ if __name__ == '__main__':
     logging.info("preprocessing test...")
     X_test = get_df_for_test(df_test)
     # X_test['passengers_up'] = y_test["passengers_up"]
-    X_y_test_sorted = X_test.sort_values(by='station_id')
+    # X_y_test_sorted = X_test.sort_values(by='station_id')
 
     # y_train['passengers_up'] = X_train['passengers_up']
     # X_train = X_train.drop('passengers_up', axis=1)
     #
-    X_y_test_grouped = X_y_test_sorted.groupby('station_id')
+    X_y_test_grouped = X_test.groupby('trip_id_unique')
 
     # df_gold_standard = pd.DataFrame({
     #     'trip_id_unique_station': X_y_test_sorted["trip_id_unique_station"],
@@ -169,29 +164,23 @@ if __name__ == '__main__':
     # 6. predict the test set using the trained model
     logging.info("predicting...")
 
-    df_predictions = pd.DataFrame(columns=['trip_id_unique_station', 'passengers_up'])
+    df_predictions = pd.DataFrame(columns=['trip_id_unique', 'trip_duration_in_minutes'])
     for key, group in tqdm(X_y_test_grouped):
 
-        X_test_model = group[['time_in_station (sec)', 'passengers_continue']]
+        X_test_model = group[['distance_between_stations', 'passengers_up']]
         # y_test_model = group['passengers_up']
-
-        if key not in model_per_stations_dict.keys():
-            model = baseline_model
-            y_station_predict = model.predict(X_test_model)
-            y_station_predict = y_station_predict.flatten().astype(float)
-        else:
-            # Create and fit the model
-            model = model_per_stations_dict[key]
-            y_station_predict = model.predict(X_test_model)
+        y_duration_predict = model.predict(X_test_model)
+        total_ride = np.sum(y_duration_predict)
 
         # Create a DataFrame with the predictions
         predictions_df = pd.DataFrame({
-            'trip_id_unique_station': group['trip_id_unique_station'],
-            'passengers_up': y_station_predict
+            'trip_id_unique': group['trip_id_unique'],
+            'trip_duration_in_minutes': total_ride
         })
 
         # Concatenate the predictions with the main DataFrame
         df_predictions = pd.concat([df_predictions, predictions_df], ignore_index=True)
+        df_predictions = df_predictions.drop_duplicates(subset=['trip_id_unique'])
 
     # 7. save the predictions to args.out
     logging.info("predictions saved to {}".format(args.out))
