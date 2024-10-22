@@ -1,5 +1,8 @@
 from argparse import ArgumentParser
 import logging
+import pandas as pd
+import preprocessing
+from EDA import EDA
 
 
 """
@@ -27,6 +30,13 @@ if __name__ == '__main__':
     # 1. load the training set (args.training_set)
     # 2. preprocess the training set
     logging.info("preprocessing train...")
+    train = pd.read_csv(args.training_set, encoding="ISO-8859-8")
+    proc_features, proc_y_train = preprocessing.preprocess_train(train)
+
+    # plot some data
+    eda = EDA(all_data, "try")
+    for i in proc_features.columns:
+        eda.two_params_correlation(i, "passengers_up")
 
     # 3. train a model
     logging.info("training...")

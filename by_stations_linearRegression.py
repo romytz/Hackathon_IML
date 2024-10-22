@@ -1,6 +1,6 @@
 import csv
 import math
-import  first_baseline
+# import  first_baseline
 from joblib import load
 
 import numpy as np
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     baseline_model = load('linear_regression_model.joblib')
 
     # Replace 'path_to_file.csv' with the actual path to your CSV file
-    df = pd.read_csv(r'C:\Elchanan\masters\second_year\Semester_B\IML\hackathon\train_bus_schedule_filtered.csv',
+    df = pd.read_csv(r'C:\Users\PC\Documents\Year3SemesterB\67577IML\Hackathon\data\train_bus_schedule_filtered.csv',
                      encoding="utf-8")
 
     X = df[['time_in_station (sec)', 'passengers_continue', 'trip_id_unique_station', "station_id"]]
@@ -87,7 +87,7 @@ if __name__ == '__main__':
 
 
     ########## PREDICTIONS ##########################
-    df_test = pd.read_csv(r'C:\Elchanan\masters\second_year\Semester_B\IML\hackathon\HU.BER\X_passengers_up.csv',
+    df_test = pd.read_csv(r'C:\Users\PC\Documents\Year3SemesterB\67577IML\Hackathon\data\X_passengers_up.csv',
                      encoding="ISO-8859-8")
     X_test = get_df_for_test(df_test)
     # X_test['passengers_up'] = y_test["passengers_up"]

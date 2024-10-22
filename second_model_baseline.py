@@ -46,7 +46,7 @@ def eval_duration(predictions: pd.DataFrame, ground_truth: pd.DataFrame):
 
 pd.options.mode.copy_on_write = True
 
-# df = pd.read_csv(r'C:\Elchanan\masters\second_year\Semester_B\IML\hackathon\train_bus_schedule_filtered.csv',
+# df = pd.read_csv(r'C:\Users\PC\Documents\Year3SemesterB\67577IML\Hackathon\data\HU.BER\train_bus_schedule_filtered.csv',
 #                  encoding="utf-8")
 # df['distance_between_stations'] = 0
 # df['duration_between_stations'] = 0
